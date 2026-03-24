@@ -1,5 +1,4 @@
 import os
-import re
 import requests
 import logging
 from datetime import datetime
@@ -16,36 +15,48 @@ CHAT_ID        = os.environ["CHAT_ID"]
 ISTANBUL_TZ    = pytz.timezone("Europe/Istanbul")
 
 def altin_fiyati_getir():
-    url     = "https://bigpara.hurriyet.com.tr/altin/gram-altin-fiyati/"
-    headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
-        resp.raise_for_status()
-        html = resp.text
-        gram_match = re.search(r'altin.*?(\d{4,5}[.,]\d{2})', html, re.IGNORECASE)
-        ons_match  = re.search(r'(\d{1,2}[.,]\d{3}[.,]\d{2,3})\s*USD', html, re.IGNORECASE)
-        if not ons_match:
-            ons_match = re.search(r'USD.*?(\d{4,5}[.,]\d{2,3})', html, re.IGNORECASE)
+        # Ons altin USD (goldprice.org - ucretsiz, key gerektirmez)
+        r1 = requests.get(
+            "https://forex-data-feed.swissquote.com/public-quotes/bboquotes/instrument/XAU/USD",
+            timeout=10
+        )
+        ons_usd = float(r1.json()[0]["spreadProfilePrices"][0]["bid"])
+    except Exception:
+        ons_usd = None
+
+    try:
+        # USD/TRY kuru (frankfurter.app - ucretsiz, key gerektirmez)
+        r2 = requests.get(
+            "https://api.frankfurter.app/latest?from=USD&to=TRY",
+            timeout=10
+        )
+        usd_try = float(r2.json()["rates"]["TRY"])
+    except Exception:
+        usd_try = None
+
+    now_ist = datetime.now(ISTANBUL_TZ)
+
+    if ons_usd and usd_try:
+        gram_tl = round((ons_usd / 31.1035) * usd_try, 2)
         return {
-            "gram_tl" : gram_match.group(1) if gram_match else "?",
-            "ons_usd" : ons_match.group(1)  if ons_match  else "?",
+            "gram_tl" : str(gram_tl),
+            "ons_usd" : str(round(ons_usd, 2)),
             "tarih"   : now_ist.strftime("%d.%m.%Y %H:%M"),
         }
-    except Exception as e:
-        logging.error("Fiyat cekilemedi: " + str(e))
-        return {
-            "gram_tl" : "?",
-            "ons_usd" : "?",
-            "tarih"   : datetime.now(ISTANBUL_TZ).strftime("%d.%m.%Y %H:%M"),
-        }
+    else:
+        return {"gram_tl": "?", "ons_usd": "?", "tarih": now_ist.strftime("%d.%m.%Y %H:%M")}
 
 def mesaj_olustur(veri):
-    satir1 = "Gunluk Altin Raporu"
-    satir2 = "Tarih: " + veri["tarih"]
-    satir3 = "Gram Altin: " + veri["gram_tl"] + " TL"
-    satir4 = "Ons Altin:  " + veri["ons_usd"] + " USD"
-    satir5 = "Kaynak: Bigpara serbest piyasa"
-    return "\n".join([satir1, satir2, "---", satir3, satir4, "---", satir5])
+    return "\n".join([
+        "Gunluk Altin Raporu",
+        "Tarih: " + veri["tarih"],
+        "---",
+        "Gram Altin: " + veri["gram_tl"] + " TL",
+        "Ons Altin:  " + veri["ons_usd"] + " USD",
+        "---",
+        "Kaynak: Swissquote + Frankfurter"
+    ])
 
 def telegram_gonder(mesaj):
     url     = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
@@ -54,17 +65,13 @@ def telegram_gonder(mesaj):
         resp = requests.post(url, json=payload, timeout=10)
         resp.raise_for_status()
         logging.info("Mesaj gonderildi.")
-        return True
     except Exception as e:
         logging.error("Telegram hatasi: " + str(e))
-        return False
 
 def gunluk_bildirim():
-    logging.info("Bildirim tetiklendi.")
     veri  = altin_fiyati_getir()
     mesaj = mesaj_olustur(veri)
+    logging.info(mesaj)
     telegram_gonder(mesaj)
 
-logging.info("Bildirim gonderiliyor...")
 gunluk_bildirim()
-logging.info("Tamamlandi.")
