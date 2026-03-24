@@ -23,8 +23,9 @@ def altin_fiyati_getir():
         resp.raise_for_status()
         html = resp.text
         gram_match = re.search(r'altin.*?(\d{4,5}[.,]\d{2})', html, re.IGNORECASE)
-        ons_match  = re.search(r'(\d{4,5}[.,]\d{2,3}).*?USD', html, re.IGNORECASE)
-        now_ist = datetime.now(ISTANBUL_TZ)
+        ons_match  = re.search(r'(\d{1,2}[.,]\d{3}[.,]\d{2,3})\s*USD', html, re.IGNORECASE)
+        if not ons_match:
+            ons_match = re.search(r'USD.*?(\d{4,5}[.,]\d{2,3})', html, re.IGNORECASE)
         return {
             "gram_tl" : gram_match.group(1) if gram_match else "?",
             "ons_usd" : ons_match.group(1)  if ons_match  else "?",
