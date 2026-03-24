@@ -37,8 +37,8 @@ def altin_fiyati_getir() -> dict:
         resp.raise_for_status()
         html = resp.text
 
-        gram_match = re.search(r'"price"[^>]*>([\d.,]+)', html)
-        ons_match  = re.search(r'ONS[^0-9]*([\d.,]+)\s*USD', html, re.IGNORECASE)
+       gram_match = re.search(r'altin.*?(\d{4,5}[.,]\d{2})', html, re.IGNORECASE)
+       ons_match  = re.search(r'(\d{4,5}[.,]\d{2,3}).*?USD', html, re.IGNORECASE)
 
         now_ist = datetime.now(ISTANBUL_TZ)
 
