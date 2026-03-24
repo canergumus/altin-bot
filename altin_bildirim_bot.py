@@ -88,11 +88,6 @@ def gunluk_bildirim():
     mesaj = mesaj_olustur(veri)
     telegram_gonder(mesaj)
 
-
-schedule.every().day.at(BILDIRIM_SAATI, "Europe/Istanbul").do(gunluk_bildirim)
-
-logging.info(f"Bot ayakta. Her gün {BILDIRIM_SAATI} Istanbul saatiyle bildirim gönderilecek.")
-
-while True:
-    schedule.run_pending()
-    time.sleep(30)
+logging.info("Bildirim gönderiliyor...")
+gunluk_bildirim()
+logging.info("Tamamlandı.")
