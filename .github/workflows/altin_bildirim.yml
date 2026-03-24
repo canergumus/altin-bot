@@ -16,5 +16,5 @@ jobs:
       - run: pip install requests
       - run: python altin_bildirim_bot.py
         env:
-          TELEGRAM_TOKEN: ${{ secrets.8704029287:AAE7r2D3N-E1a8Oiis3SmYa0_e6k3HyoMqE }}
-          CHAT_ID: ${{ secrets.5700720643 }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
